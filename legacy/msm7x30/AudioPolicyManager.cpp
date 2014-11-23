@@ -434,9 +434,9 @@ status_t AudioPolicyManager::setDeviceConnectionState(audio_devices_t device,
 
     // handle input devices
     if (audio_is_input_device(device)) {
-		SortedVector <audio_io_handle_t> inputs;
+        SortedVector <audio_io_handle_t> inputs;
 
-		String8 paramStr;
+        String8 paramStr;
         switch (state)
         {
         // handle input device connection
@@ -446,13 +446,13 @@ status_t AudioPolicyManager::setDeviceConnectionState(audio_devices_t device,
                 return INVALID_OPERATION;
             }
 
-			if (mHasUsb && audio_is_usb_in_device(device)) {
-				// handle USB device connection
-				paramStr = String8(device_address, MAX_DEVICE_ADDRESS_LEN);
-			}
-			if (checkInputsForDevice(device, state, inputs, paramStr) != NO_ERROR) {
-				return INVALID_OPERATION;
-			}
+            if (mHasUsb && audio_is_usb_in_device(device)) {
+                // handle USB device connection
+                paramStr = String8(device_address, MAX_DEVICE_ADDRESS_LEN);
+            }
+            if (checkInputsForDevice(device, state, inputs, paramStr) != NO_ERROR) {
+                return INVALID_OPERATION;
+            }
             mAvailableInputDevices = mAvailableInputDevices | (device & ~AUDIO_DEVICE_BIT_IN);
             }
             break;
@@ -463,7 +463,7 @@ status_t AudioPolicyManager::setDeviceConnectionState(audio_devices_t device,
                 ALOGW("setDeviceConnectionState() device not connected: %d", device);
                 return INVALID_OPERATION;
             }
-			checkInputsForDevice(device, state, inputs, paramStr);
+            checkInputsForDevice(device, state, inputs, paramStr);
             mAvailableInputDevices = (audio_devices_t) (mAvailableInputDevices & ~device);
         } break;
 
@@ -472,7 +472,7 @@ status_t AudioPolicyManager::setDeviceConnectionState(audio_devices_t device,
             return BAD_VALUE;
         }
 
-		closeAllInputs();
+        closeAllInputs();
 
         return NO_ERROR;
     } // end if is input device
@@ -1090,7 +1090,7 @@ audio_io_handle_t AudioPolicyManager::getInput(int inputSource,
         delete inputDesc;
         return 0;
     }
-	addInput(input, inputDesc);
+    addInput(input, inputDesc);
 
     return input;
 }
