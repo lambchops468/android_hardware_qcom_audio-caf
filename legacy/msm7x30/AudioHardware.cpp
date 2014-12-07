@@ -1144,11 +1144,16 @@ void AudioHardware::closeInputStream(AudioStreamIn* in) {
 
 status_t AudioHardware::setMode(int mode)
 {
-    status_t status = AudioHardwareBase::setMode(mode);
-    if (status == NO_ERROR) {
-        // make sure that doAudioRouteOrMute() is called by doRouting()
-        // even if the new device selected is the same as current one.
-        clearCurDevice();
+    status_t status = NO_ERROR;
+
+    if (mode != mMode) {
+        status = AudioHardwareBase::setMode(mode);
+        if (status == NO_ERROR) {
+            // make sure that doAudioRouteOrMute() is called by doRouting()
+            // even if the new device selected is the same as current one.
+            clearCurDevice();
+            doRouting(NULL);
+        }
     }
     return status;
 }
