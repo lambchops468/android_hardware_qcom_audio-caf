@@ -649,6 +649,12 @@ private:
             bool        mBluetoothVGS;
             uint32_t    mBluetoothId;
             float       mVoiceVolume;
+            AudioStreamOutMSM72xx*  mOutput;
+            SortedVector <AudioStreamInMSM72xx*>   mInputs;
+            int mCurSndDevice;
+            int m7xsnddriverfd;
+            bool    mDualMicEnabled;
+            int     mTtyMode;
 #ifdef HTC_AUDIO
             bool        mHACSetting;
             uint32_t    mBluetoothIdTx;
@@ -662,15 +668,6 @@ private:
             char        mActiveAP[10];
             char        mEffect[10];
 #endif
-            AudioStreamOutMSM72xx*  mOutput;
-            SortedVector <AudioStreamInMSM72xx*>   mInputs;
-#ifdef WITH_QCOM_VOIP_OVER_MVS
-            AudioStreamOutDirect*  mDirectOutput;
-#endif
-            int mCurSndDevice;
-            int m7xsnddriverfd;
-            bool    mDualMicEnabled;
-            int     mTtyMode;
 #ifdef WITH_QCOM_VOIP_OVER_MVS
             SortedVector <AudioStreamInVoip*>   mVoipInputs;
 #endif
@@ -683,6 +680,7 @@ private:
             bool mVoipOutActive;
             Mutex mVoipLock;
             int mVoipSession;
+            AudioStreamOutDirect*  mDirectOutput;
 #endif
 };
 
