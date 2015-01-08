@@ -891,7 +891,7 @@ status_t AudioHardware::initCheck()
 
 // default implementation calls its "without flags" counterpart
 AudioStreamOut* AudioHardware::openOutputStreamWithFlags(uint32_t devices,
-                                          audio_output_flags_t flags,
+                                          audio_output_flags_t flags __unused,
                                           int *format,
                                           uint32_t *channels,
                                           uint32_t *sampleRate,
@@ -2767,7 +2767,7 @@ status_t AudioHardware::checkMicMute()
     return NO_ERROR;
 }
 
-status_t AudioHardware::dumpInternals(int fd, const Vector<String16>& args)
+status_t AudioHardware::dumpInternals(int fd, const Vector<String16>& args __unused)
 {
     const size_t SIZE = 256;
     char buffer[SIZE];
@@ -3209,7 +3209,7 @@ status_t AudioHardware::AudioStreamOutMSM72xx::standby()
     return status;
 }
 
-status_t AudioHardware::AudioStreamOutMSM72xx::dump(int fd, const Vector<String16>& args)
+status_t AudioHardware::AudioStreamOutMSM72xx::dump(int fd, const Vector<String16>& args __unused)
 {
     const size_t SIZE = 256;
     char buffer[SIZE];
@@ -3279,7 +3279,7 @@ String8 AudioHardware::AudioStreamOutMSM72xx::getParameters(const String8& keys)
     return param.toString();
 }
 
-status_t AudioHardware::AudioStreamOutMSM72xx::getRenderPosition(uint32_t *dspFrames)
+status_t AudioHardware::AudioStreamOutMSM72xx::getRenderPosition(uint32_t *dspFrames __unused)
 {
     //TODO: enable when supported by driver
     return INVALID_OPERATION;
@@ -4433,7 +4433,7 @@ status_t AudioHardware::AudioStreamInMSM72xx::standby()
     return NO_ERROR;
 }
 
-status_t AudioHardware::AudioStreamInMSM72xx::dump(int fd, const Vector<String16>& args)
+status_t AudioHardware::AudioStreamInMSM72xx::dump(int fd, const Vector<String16>& args __unused)
 {
     const size_t SIZE = 256;
     char buffer[SIZE];
