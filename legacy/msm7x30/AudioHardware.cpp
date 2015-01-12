@@ -905,11 +905,10 @@ AudioStreamOut* AudioHardware::openOutputStream(
         uint32_t *sampleRate, status_t *status)
 
 {
-     ALOGD("AudioHardware::openOutputStream devices %x format %d channels %d samplerate %d",
-        devices, *format, *channels, *sampleRate);
-
      audio_output_flags_t flags = static_cast<audio_output_flags_t> (*status);
 
+     ALOGD("AudioHardware::openOutputStream devices %x format %d channels %d samplerate %d flags %d",
+        devices, *format, *channels, *sampleRate, flags);
 
     { // scope for the lock
         Mutex::Autolock lock(mLock);
@@ -1152,7 +1151,7 @@ status_t AudioHardware::setMode(int mode)
             // make sure that doAudioRouteOrMute() is called by doRouting()
             // even if the new device selected is the same as current one.
             clearCurDevice();
-            doRouting(NULL);
+            doRouting(NULL, 0);
         }
     }
     return status;
@@ -1263,7 +1262,7 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs)
                  "(%s not in acoustic database)", value.string());
         }
 #endif
-        doRouting(NULL);
+        doRouting(NULL, 0);
     }
 
     key = String8(DUALMIC_KEY);
@@ -1275,7 +1274,7 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs)
             mDualMicEnabled = false;
             ALOGI("DualMike feature Disabled");
         }
-        doRouting(NULL);
+        doRouting(NULL, 0);
     }
 
     key = String8(TTY_MODE_KEY);
@@ -1296,7 +1295,7 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs)
         if((mMode == AudioSystem::MODE_IN_CALL) &&
           (cur_rx == DEVICE_HEADSET_RX) &&
           (cur_tx == DEVICE_HEADSET_TX))
-          doRouting(NULL);
+          doRouting(NULL, 0);
     }
 
 #ifdef HTC_AUDIO
@@ -2382,15 +2381,17 @@ int AudioHardware::aic3254_set_volume(int volume) {
 }
 #endif
 
-status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
+status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input, uint32_t outputDevices)
 {
     Mutex::Autolock lock(mLock);
-    uint32_t outputDevices = mOutput->devices();
     status_t ret = NO_ERROR;
     int audProcess = (ADRC_DISABLE | EQ_DISABLE | RX_IIR_DISABLE);
     int sndDevice = -1;
 
+	if (!outputDevices)
+		outputDevices = mOutput->devices();
 
+	ALOGD("outputDevices = %x", outputDevices);
 
     if (input != NULL) {
         uint32_t inputDevice = input->devices();
@@ -2913,7 +2914,7 @@ status_t AudioHardware::AudioSessionOutMSM7xxx::setParameters(const String8& key
     if (param.getInt(key, device) == NO_ERROR) {
         mDevices = device;
         ALOGV("set output routing %x", mDevices);
-        status = mHardware->doRouting(NULL);
+        status = mHardware->doRouting(NULL, device);
         param.remove(key);
     }
 
@@ -3254,7 +3255,7 @@ status_t AudioHardware::AudioStreamOutMSM72xx::setParameters(const String8& keyV
     if (param.getInt(key, device) == NO_ERROR) {
         mDevices = device;
         ALOGV("set output routing %x", mDevices);
-        status = mHardware->doRouting(NULL);
+        status = mHardware->doRouting(NULL, device);
         param.remove(key);
     }
 
@@ -3574,7 +3575,7 @@ status_t AudioHardware::AudioStreamOutDirect::setParameters(const String8& keyVa
     if (param.getInt(key, device) == NO_ERROR) {
         mDevices = device;
         ALOGV("set output routing %x", mDevices);
-        status = mHardware->doRouting(NULL);
+        status = mHardware->doRouting(NULL, device);
         param.remove(key);
     }
 
@@ -4207,7 +4208,7 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes)
     if (mState < AUDIO_INPUT_STARTED) {
         // force routing to input device
         mHardware->clearCurDevice();
-        mHardware->doRouting(this);
+        mHardware->doRouting(this, 0);
 #ifdef HTC_AUDIO
         if (support_aic3254) {
             int snd_dev = mHardware->get_snd_dev();
@@ -4429,7 +4430,7 @@ status_t AudioHardware::AudioStreamInMSM72xx::standby()
     }//mRecordingSession condition.
     // restore output routing if necessary
     mHardware->clearCurDevice();
-    mHardware->doRouting(this);
+    mHardware->doRouting(this, 0);
     return NO_ERROR;
 }
 
@@ -4473,7 +4474,7 @@ status_t AudioHardware::AudioStreamInMSM72xx::setParameters(const String8& keyVa
             status = BAD_VALUE;
         } else {
             mDevices = device;
-            status = mHardware->doRouting(this);
+            status = mHardware->doRouting(this, device);
         }
         param.remove(key);
     }
@@ -4834,7 +4835,7 @@ status_t AudioHardware::AudioStreamInVoip::setParameters(const String8& keyValue
             status = BAD_VALUE;
         } else {
             mDevices = device;
-            status = mHardware->doRouting(this);
+            status = mHardware->doRouting(this, device);
         }
         param.remove(key);
     }
