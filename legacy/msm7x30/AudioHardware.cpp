@@ -113,6 +113,7 @@ static const uint32_t SND_DEVICE_HDMI = 15;
 static const uint32_t SND_DEVICE_FM_TX = 16;
 static const uint32_t SND_DEVICE_FM_TX_AND_SPEAKER = 17;
 static const uint32_t SND_DEVICE_HEADPHONE_AND_SPEAKER = 18;
+static const uint32_t SND_DEVICE_BACK_MIC_CAMCORDER = 33;
 #ifdef HTC_AUDIO
 static const uint32_t SND_DEVICE_CARKIT = 19;
 static const uint32_t SND_DEVICE_HANDSET_BACK_MIC = 20;
@@ -162,6 +163,8 @@ static const uint32_t DEVICE_HDMI_STERO_RX = 15;       /* hdmi_stereo_rx */
 static const uint32_t DEVICE_FMRADIO_STEREO_RX = 16;
 static const uint32_t DEVICE_BT_SCO_RX = 17;           /* bt_sco_rx */
 static const uint32_t DEVICE_BT_SCO_TX = 18;           /* bt_sco_tx */
+static const uint32_t DEVICE_CAMCORDER_TX = 105;       /* caf: camcorder_tx
+                                                          semc: speaker_secondary_mic_tx */
 #if defined(SAMSUNG_AUDIO)
 static const uint32_t DEVICE_HANDSET_VOIP_RX = 40;     /* handset_voip_rx */
 static const uint32_t DEVICE_HANDSET_VOIP_TX = 41;     /* handset_voip_tx */
@@ -183,7 +186,7 @@ static const uint32_t DEVICE_ALT_RX = 21;              /* alt_mono_rx */
 static const uint32_t DEVICE_VR_HANDSET = 22;          /* handset_vr_tx */
 static const uint32_t DEVICE_COUNT = DEVICE_VR_HANDSET +1;
 #else
-static uint32_t DEVICE_COUNT = DEVICE_BT_SCO_TX +1;
+static const uint32_t DEVICE_COUNT = DEVICE_CAMCORDER_TX +1;
 #endif
 
 #ifdef HTC_AUDIO
@@ -395,7 +398,7 @@ bool isDeviceListEmpty() {
 }
 
 int enableDevice(int device,short enable) {
-    ALOGD("value of device and enable is %d %d ALSA dev id:%d",device,enable,DEV_ID(device));
+    ALOGV("value of device and enable is %d %d ALSA dev id:%d",device,enable,DEV_ID(device));
     if( msm_en_device(DEV_ID(device), enable)) {
         ALOGE("msm_en_device(%d, %d) failed errno = %d",DEV_ID(device), enable, errno);
         return -1;
@@ -427,7 +430,7 @@ static status_t updateDeviceInfo(int rx_device,int tx_device,
 #else
 static status_t updateDeviceInfo(int rx_device,int tx_device) {
 #endif
-    ALOGE("updateDeviceInfo: E rx_device %d and tx_device %d", rx_device, tx_device);
+    ALOGV("updateDeviceInfo: E rx_device %d and tx_device %d", rx_device, tx_device);
     bool isRxDeviceEnabled = false,isTxDeviceEnabled = false;
     Routing_table *temp_ptr,*temp_head;
     int tx_dev_prev = INVALID_DEVICE;
@@ -442,7 +445,7 @@ static status_t updateDeviceInfo(int rx_device,int tx_device) {
         && !getNodeByStreamType(LPA_DECODE)
 #endif
        ) {
-        ALOGD("No active voicecall/playback, disabling cur_rx %d", cur_rx);
+        ALOGV("No active voicecall/playback, disabling cur_rx %d", cur_rx);
         if(cur_rx != INVALID_DEVICE && enableDevice(cur_rx, 0)) {
             ALOGE("Disabling device failed for cur_rx %d", cur_rx);
         }
@@ -450,7 +453,7 @@ static status_t updateDeviceInfo(int rx_device,int tx_device) {
     }
 
     if(!getNodeByStreamType(VOICE_CALL) && !getNodeByStreamType(PCM_REC)) {
-        ALOGD("No active voicecall/recording, disabling cur_tx %d", cur_tx);
+        ALOGV("No active voicecall/recording, disabling cur_tx %d", cur_tx);
         if(cur_tx != INVALID_DEVICE && enableDevice(cur_tx, 0)) {
             ALOGE("Disabling device failed for cur_tx %d", cur_tx);
         }
@@ -570,7 +573,7 @@ static status_t updateDeviceInfo(int rx_device,int tx_device) {
         temp_head = temp_head->next;
     }
 
-    ALOGE("updateDeviceInfo: X cur_rx %d cur_tx %d", cur_rx, cur_tx);
+    ALOGV("updateDeviceInfo: X cur_rx %d cur_tx %d", cur_rx, cur_tx);
     return NO_ERROR;
 }
 
@@ -588,9 +591,9 @@ free(device_list);
 // ----------------------------------------------------------------------------
 
 AudioHardware::AudioHardware() :
-    mInit(false), mMicMute(true), mBluetoothNrec(true), mBluetoothId(0),
-    mOutput(0), mBluetoothVGS(false), mCurSndDevice(SND_DEVICE_CURRENT),
-    mVoiceVolume(1), mTtyMode(TTY_OFF), mDualMicEnabled(false), mFmFd(-1)
+    mInit(false), mMicMute(true), mFmFd(-1), mBluetoothNrec(true),
+    mBluetoothVGS(false), mBluetoothId(0), mVoiceVolume(1), mOutput(0),
+    mCurSndDevice(SND_DEVICE_CURRENT), mDualMicEnabled(false), mTtyMode(TTY_OFF)
 #ifdef HTC_AUDIO
     , mHACSetting(false), mBluetoothIdTx(0), mBluetoothIdRx(0),
     mRecordState(false), mEffectEnabled(false)
@@ -713,30 +716,35 @@ AudioHardware::AudioHardware() :
             else if(strcmp((char*)name[i],"fmradio_stereo_rx") == 0)
                 index = DEVICE_FMRADIO_STEREO_RX;
 #ifdef SAMSUNG_AUDIO
-	    else if(strcmp((char* )name[i], "handset_voip_rx") == 0)
-	        index = DEVICE_HANDSET_VOIP_RX;
-	    else if(strcmp((char* )name[i], "handset_voip_tx") == 0)
-	        index = DEVICE_HANDSET_VOIP_TX;
-	    else if(strcmp((char* )name[i], "speaker_voip_rx") == 0)
-	        index = DEVICE_SPEAKER_VOIP_RX;
-	    else if(strcmp((char* )name[i], "speaker_voip_tx") == 0)
-	        index = DEVICE_SPEAKER_VOIP_TX;
-	    else if(strcmp((char* )name[i], "headset_voip_rx") == 0)
-	        index = DEVICE_HEADSET_VOIP_RX;
-	    else if(strcmp((char* )name[i], "headset_voip_tx") == 0)
-	        index = DEVICE_HEADSET_VOIP_TX;
-	    else if(strcmp((char* )name[i], "handset_call_rx") == 0)
-	        index = DEVICE_HANDSET_CALL_RX;
-	    else if(strcmp((char* )name[i], "handset_call_tx") == 0)
-	        index = DEVICE_HANDSET_CALL_TX;
-	    else if(strcmp((char* )name[i], "speaker_call_rx") == 0)
-	        index = DEVICE_SPEAKER_CALL_RX;
-	    else if(strcmp((char* )name[i], "speaker_call_tx") == 0)
-	        index = DEVICE_SPEAKER_CALL_TX;
-	    else if(strcmp((char* )name[i], "headset_call_rx") == 0)
-	        index = DEVICE_HEADSET_CALL_RX;
-	    else if(strcmp((char* )name[i], "headset_call_tx") == 0)
-	        index = DEVICE_HEADSET_CALL_TX;
+            else if(strcmp((char* )name[i], "handset_voip_rx") == 0)
+                index = DEVICE_HANDSET_VOIP_RX;
+            else if(strcmp((char* )name[i], "handset_voip_tx") == 0)
+                index = DEVICE_HANDSET_VOIP_TX;
+            else if(strcmp((char* )name[i], "speaker_voip_rx") == 0)
+                index = DEVICE_SPEAKER_VOIP_RX;
+            else if(strcmp((char* )name[i], "speaker_voip_tx") == 0)
+                index = DEVICE_SPEAKER_VOIP_TX;
+            else if(strcmp((char* )name[i], "headset_voip_rx") == 0)
+                index = DEVICE_HEADSET_VOIP_RX;
+            else if(strcmp((char* )name[i], "headset_voip_tx") == 0)
+                index = DEVICE_HEADSET_VOIP_TX;
+            else if(strcmp((char* )name[i], "handset_call_rx") == 0)
+                index = DEVICE_HANDSET_CALL_RX;
+            else if(strcmp((char* )name[i], "handset_call_tx") == 0)
+                index = DEVICE_HANDSET_CALL_TX;
+            else if(strcmp((char* )name[i], "speaker_call_rx") == 0)
+                index = DEVICE_SPEAKER_CALL_RX;
+            else if(strcmp((char* )name[i], "speaker_call_tx") == 0)
+                index = DEVICE_SPEAKER_CALL_TX;
+            else if(strcmp((char* )name[i], "headset_call_rx") == 0)
+                index = DEVICE_HEADSET_CALL_RX;
+            else if(strcmp((char* )name[i], "headset_call_tx") == 0)
+                index = DEVICE_HEADSET_CALL_TX;
+#endif
+#ifdef BACK_MIC_CAMCORDER
+            else if((strcmp((char* )name[i], "camcorder_tx") == 0) ||
+                    (strcmp((char* )name[i], "speaker_secondary_mic_tx") == 0))
+                index = DEVICE_CAMCORDER_TX;
 #endif
             else
                 continue;
@@ -879,17 +887,6 @@ AudioHardware::~AudioHardware()
 status_t AudioHardware::initCheck()
 {
     return mInit ? NO_ERROR : NO_INIT;
-}
-
-// default implementation calls its "without flags" counterpart
-AudioStreamOut* AudioHardware::openOutputStreamWithFlags(uint32_t devices,
-                                          audio_output_flags_t flags,
-                                          int *format,
-                                          uint32_t *channels,
-                                          uint32_t *sampleRate,
-                                          status_t *status)
-{
-    return openOutputStream(devices, format, channels, sampleRate, status);
 }
 
 AudioStreamOut* AudioHardware::openOutputStream(
@@ -1771,6 +1768,13 @@ static status_t do_route_audio_rpc(uint32_t device,
         ALOGV("In CALL HEADSET");
     }
 #endif
+#ifdef BACK_MIC_CAMCORDER
+    else if (device == SND_DEVICE_BACK_MIC_CAMCORDER) {
+        new_rx_device = cur_rx;
+        new_tx_device = DEVICE_CAMCORDER_TX;
+        ALOGV("In BACK_MIC_CAMCORDER");
+    }
+#endif
 
     if(new_rx_device != INVALID_DEVICE)
         ALOGD("new_rx = %d", DEV_ID(new_rx_device));
@@ -2389,6 +2393,11 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
             if (inputDevice & AudioSystem::DEVICE_IN_BLUETOOTH_SCO_HEADSET) {
                 ALOGI("Routing audio to Bluetooth PCM\n");
                 sndDevice = SND_DEVICE_BT;
+#ifdef BACK_MIC_CAMCORDER
+            } else if (inputDevice & AudioSystem::DEVICE_IN_BACK_MIC) {
+                ALOGI("Routing audio to back mic (camcorder)");
+                sndDevice = SND_DEVICE_BACK_MIC_CAMCORDER;
+#endif
             } else if (inputDevice & AudioSystem::DEVICE_IN_WIRED_HEADSET) {
                 if ((outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADSET) &&
                     (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER)) {
@@ -3087,7 +3096,7 @@ ssize_t AudioHardware::AudioStreamOutMSM72xx::write(const void* buffer, size_t b
             updateACDB(cur_rx, cur_tx, rx_acdb_id, 0);
 #endif
 
-            ALOGD("msm_route_stream(PCM_PLAY,%d,%d,1)",dec_id,DEV_ID(cur_rx));
+            ALOGV("msm_route_stream(PCM_PLAY,%d,%d,1)",dec_id,DEV_ID(cur_rx));
             if(msm_route_stream(PCM_PLAY, dec_id, DEV_ID(cur_rx), 1)) {
                 ALOGE("msm_route_stream failed");
                 return 0;
@@ -3147,7 +3156,7 @@ Error:
 status_t AudioHardware::AudioStreamOutMSM72xx::standby()
 {
     Routing_table* temp = NULL;
-    ALOGD("AudioStreamOutMSM72xx::standby()");
+    ALOGV("AudioStreamOutMSM72xx::standby()");
     status_t status = NO_ERROR;
 
     temp = getNodeByStreamType(PCM_PLAY);
@@ -3155,7 +3164,7 @@ status_t AudioHardware::AudioStreamOutMSM72xx::standby()
     if(temp == NULL)
         return NO_ERROR;
 
-    ALOGD("Deroute pcm out stream");
+    ALOGV("Deroute pcm out stream");
     if(msm_route_stream(PCM_PLAY, temp->dec_id,DEV_ID(temp->dev_id), 0)) {
         ALOGE("could not set stream routing\n");
         deleteFromTable(PCM_PLAY);
